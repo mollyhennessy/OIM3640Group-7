@@ -1,19 +1,20 @@
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 
+# Load data
 weather = pd.read_csv("C:/Users/achavez1/Desktop/Python/Problem Sets/pythonProject/Data/boston_weather_data.csv", parse_dates=['time'])
-# print(weather.head())
 
+# User input
 prompt = st.text_input("Please enter which day you would like to look at in yyyy-mm-dd format: ")
 
+# Filter data by date range
 date = pd.to_datetime(prompt)
+start_date = date.date()
+end_date = start_date + pd.Timedelta(days=3)  # Show next 3 days
+data = weather[(weather['time'].dt.date >= start_date) & (weather['time'].dt.date <= end_date)]
 
-# Converts the chosen day into datetime
-chosen_day = weather[weather['time'].dt.date == date.date()]
-
-# dictionary of clothing and accessories ex: print(outfits['Summer'])
+# dictionaries of clothing and accessories ex: print(outfits['Summer'])
 outfits = {
     'Summer': ['shorts', 't-shirt', 'tank tops', 'flip flops'],     # above 21 celsius
     'Breezy': ['jeans', 'boots', 'sweater', 'light_jacket'],        # between 15 and 21 celsius
@@ -21,54 +22,29 @@ outfits = {
     'Winter': ['puffer jacket', 'scarf', 'gloves', 'boots', 'thermals'],    # below 0 celsius
 }
 
-accessory = {
-    'Rain': ['umbrella', 'rain coat', 'boots'],                     # precp is greater than 35
-    'Sunny': ['sunglasses', 'cap']                                  # precp is equal to 0
-}
+# Display tavg for the day(s)
+if not data.empty:
+    tavg = data['tavg'].mean()
+    st.write(f"The tavg for {start_date} to {end_date} is: {tavg:.1f} F")
 
-# If there is no data for the chosen date, we print an error
-if chosen_day.empty:
-    st.write("No data available for the chosen date.")
-else:
-    tavg = chosen_day['tavg'].values[0]
-    precp = chosen_day['prcp'].values[0]
-
-    # This gives us the forecast for the next three days based on the chosen_day variable
-    next_three_days = pd.date_range(date + pd.Timedelta(days=1), date + pd.Timedelta(days=4), freq='D')
-
-    days = []
-    temps = []
-    for day in next_three_days:
-        day_data = weather[weather['time'].dt.date == day.date()]
-        if day_data.empty:
-            st.write(f":No data available for {day.date()}.")
-        else:
-            tavg = day_data['tavg'].values[0]
-            st.write(f"The average temperature for {day.date()} is predicted to be {tavg:.1f} degrees Celsius")
-            st.write(f"The precipitation for {day.date()} is predicted to be {precp:.2f} mm")
-            days.append(day)
-            temps.append(tavg)
-
-    if precp > 35:
-        accessory_list = accessory['Rain']
+    # Suggest outfit based on temperature range
+    if tavg > 21:
+        outfit_type = 'Summer'
+    elif tavg >= 15:
+        outfit_type = 'Breezy'
+    elif tavg >= 0:
+        outfit_type = 'Cold'
     else:
-        accessory_list = accessory['Sunny']
+        outfit_type = 'Winter'
+    st.write(f"Suggested outfit for the temperature range: {outfit_type}")
+    st.write(f"Outfit: {', '.join(outfits[outfit_type])}")
 
-    if tavg >= 21:
-        outfit = outfits['Summer']
-    elif tavg >= 15 and tavg < 21:
-        outfit = outfits['Breezy']
-    elif tavg >= 0 and tavg < 15:
-        outfit = outfits['Cold']
-    elif tavg < 0:
-        outfit = outfits['Winter']
-
-    st.write(f"The average temperature for {date.date()} was {tavg:.1f} degrees Celsius.")
-    st.write(f"You should wear: {', '.join(outfit)}")
-
-plt.style.use('ggplot')
-plt.plot(days, temps)
-plt.title('Next Three Days Forecast')
-plt.xlabel('Date')
-plt.ylabel('Temperature (C)')
-plt.show()
+    # Plot temperature data
+    fig, ax = plt.subplots()
+    ax.plot(data['time'], data['tavg'])
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Temperature (F)')
+    ax.set_title(f'Temperature from {start_date} to {end_date}')
+    st.pyplot(fig)
+else:
+    st.write("No data available for the selected date range.")
